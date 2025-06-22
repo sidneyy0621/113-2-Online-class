@@ -1,631 +1,404 @@
-# Online Classes 線上課程平台 - 後端 API 文檔
+# Online Classes - 線上課程學習平台
 
-## 📋 系統簡介
+## 📖 系統整體介紹
 
-Online Classes 後端系統是基於 PHP 和 MySQL 開發的 RESTful API 服務，為線上課程學習平台提供完整的數據管理和業務邏輯處理。系統採用 PDO 進行資料庫操作，支援跨域請求，提供完整的課程管理、用戶認證、報名系統等功能。
+Online Classes 是一個現代化的線上課程學習平台，提供學生和教師之間互動學習的完整解決方案。平台採用 React.js 前端框架配合 PHP 後端 API 開發，具備響應式設計，支援多語言介面（繁體中文、英文、日文），並整合了智能聊天機器人功能。
 
-## ⚙️ 環境部署
+### 🌟 主要特色
 
-### 系統需求
-- **PHP**: 8.0 或更高版本
-- **MySQL**: 8.0 或更高版本
-- **網頁伺服器**: Apache/Nginx
-- **開發環境**: XAMPP/WAMP（推薦）
-
-### 🚀 快速部署指南
-
-#### 步驟 1：安裝 XAMPP 環境
-
-1. **下載 XAMPP**
-   - 前往 [XAMPP 官網](https://www.apachefriends.org/download.html)
-   - 下載適合 Windows 的最新版本
-
-2. **安裝 XAMPP**
-   ```bash
-   # 1. 執行下載的安裝檔
-   # 2. 選擇安裝路徑（建議預設 C:\xampp）
-   # 3. 勾選 Apache、MySQL、PHP 組件
-   # 4. 完成安裝
-   ```
-
-3. **啟動服務**
-   ```bash
-   # 開啟 XAMPP Control Panel
-   # 點擊 Apache 右側的 "Start" 按鈕
-   # 點擊 MySQL 右側的 "Start" 按鈕
-   # 確認兩個服務都顯示綠色 "Running" 狀態
-   ```
-
-#### 步驟 2：建立資料庫
-
-1. **進入 phpMyAdmin**
-   - 開啟瀏覽器
-   - 訪問 `http://localhost/phpmyadmin`
-
-2. **建立資料庫**
-   ```sql
-   -- 點擊左側 "新增" 或上方 "資料庫" 標籤
-   -- 資料庫名稱輸入: online_classes
-   -- 定序選擇: utf8mb4_unicode_ci
-   -- 點擊 "建立"
-   ```
-
-3. **建立資料表（複製以下 SQL 語法執行）**
-   ```sql
-   -- 使用資料庫
-   USE online_classes;
-
-   -- 建立用戶表
-   CREATE TABLE users (
-       id INT PRIMARY KEY AUTO_INCREMENT,
-       name VARCHAR(100) NOT NULL,
-       email VARCHAR(150) UNIQUE NOT NULL,
-       password VARCHAR(255) NOT NULL,
-       role ENUM('student', 'teacher') NOT NULL,
-       gender ENUM('male', 'female') NOT NULL,
-       birthday DATE,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   );
-
-   -- 建立課程表
-   CREATE TABLE courses (
-       id INT PRIMARY KEY AUTO_INCREMENT,
-       title VARCHAR(200) NOT NULL,
-       description TEXT,
-       start_time DATETIME NOT NULL,
-       end_time DATETIME NOT NULL,
-       max_capacity INT NOT NULL,
-       teacher_id INT NOT NULL,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (teacher_id) REFERENCES users(id)
-   );
-
-   -- 建立報名表
-   CREATE TABLE enrollments (
-       id INT PRIMARY KEY AUTO_INCREMENT,
-       student_id INT NOT NULL,
-       course_id INT NOT NULL,
-       enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (student_id) REFERENCES users(id),
-       FOREIGN KEY (course_id) REFERENCES courses(id),
-       UNIQUE KEY unique_enrollment (student_id, course_id)
-   );
-
-   -- 建立收藏表
-   CREATE TABLE favorites (
-       id INT PRIMARY KEY AUTO_INCREMENT,
-       student_id INT NOT NULL,
-       course_id INT NOT NULL,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (student_id) REFERENCES users(id),
-       FOREIGN KEY (course_id) REFERENCES courses(id),
-       UNIQUE KEY unique_favorite (student_id, course_id)
-   );
-
-   -- 建立評論表
-   CREATE TABLE course_comments (
-       id INT PRIMARY KEY AUTO_INCREMENT,
-       user_id INT NOT NULL,
-       course_id INT NOT NULL,
-       content TEXT NOT NULL,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (user_id) REFERENCES users(id),
-       FOREIGN KEY (course_id) REFERENCES courses(id)
-   );
-   ```
-
-#### 步驟 3：設定資料庫連線
-
-1. **找到 db.php 檔案**
-   ```
-   位置: backend/db.php
-   ```
-
-2. **編輯連線設定（通常不需要修改）**
-   ```php
-   <?php
-   $host = 'localhost';        // 資料庫主機位址
-   $db   = 'online_classes';   // 資料庫名稱
-   $user = 'root';             // MySQL 使用者名稱（XAMPP 預設）
-   $pass = '';                 // MySQL 密碼（XAMPP 預設為空）
-   $charset = 'utf8mb4';       // 字符集
-   
-   $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-   $options = [
-       PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-   ];
-   try {
-       $pdo = new PDO($dsn, $user, $pass, $options);
-   } catch (\PDOException $e) {
-       http_response_code(500);
-       echo json_encode(['error' => '資料庫連線失敗']);
-       exit;
-   }
-   ?>
-   ```
-
-#### 步驟 4：部署後端檔案
-
-1. **複製檔案到正確位置**
-   ```bash
-   # 將整個 backend 資料夾複製到以下位置：
-   
-   # XAMPP 用戶：
-   C:\xampp\htdocs\online-classes\backend\
-   
-   # WAMP 用戶：
-   C:\wamp64\www\online-classes\backend\
-   
-   # 完整檔案結構應該是：
-   C:\xampp\htdocs\online-classes\backend\
-   ├── auth.php
-   ├── courses.php
-   ├── enrollments.php
-   ├── favorites.php
-   ├── comment.php
-   ├── users.php
-   ├── db.php
-   └── README.md
-   ```
-
-2. **檔案權限設定（Windows 通常自動設定）**
-   ```bash
-   # 確保檔案可讀取執行
-   # Windows 系統通常不需要手動設定權限
-   ```
-
-#### 步驟 5：測試部署
-
-1. **測試資料庫連線**
-   ```bash
-   # 在瀏覽器中訪問：
-   http://localhost/online-classes/backend/courses.php?action=list
-   
-   # 預期回應：
-   # []  (空陣列，表示尚無課程資料但連線正常)
-   ```
-
-2. **使用 curl 測試（可選）**
-   ```bash
-   # 如果有安裝 curl，可以在命令列測試：
-   curl "http://localhost/online-classes/backend/courses.php?action=list"
-   ```
-
-3. **常見測試端點**
-   ```bash
-   # 測試課程列表
-   http://localhost/online-classes/backend/courses.php?action=list
-   
-   # 測試用戶註冊（POST 請求，需要使用 Postman 或前端）
-   http://localhost/online-classes/backend/auth.php?action=register
-   ```
-
-### 🔧 進階設定（可選）
-
-#### 虛擬主機設定
-如果想使用自定義域名（如 `online-classes.local`）：
-
-1. **編輯 hosts 檔案**
-   ```bash
-   # 使用管理員權限編輯：
-   C:\Windows\System32\drivers\etc\hosts
-   
-   # 添加以下行：
-   127.0.0.1    online-classes.local
-   ```
-
-2. **Apache 虛擬主機設定**
-   ```apache
-   # 編輯 C:\xampp\apache\conf\extra\httpd-vhosts.conf
-   # 添加：
-   <VirtualHost *:80>
-       DocumentRoot "C:/xampp/htdocs/online-classes"
-       ServerName online-classes.local
-       <Directory "C:/xampp/htdocs/online-classes">
-           AllowOverride All
-           Require all granted
-       </Directory>
-   </VirtualHost>
-   ```
-
-#### SSL 設定（可選）
-```bash
-# 啟用 HTTPS（用於生產環境）
-# 1. 在 XAMPP Control Panel 中點擊 Apache 的 "Config"
-# 2. 選擇 "httpd.conf"
-# 3. 取消註解: LoadModule ssl_module modules/mod_ssl.so
-# 4. 取消註解: Include conf/extra/httpd-ssl.conf
-```
-
-### ❗ 疑難排解
-
-#### 問題 1：Apache 無法啟動
-```bash
-# 解決方案：
-# 1. 檢查 80 端口是否被佔用
-# 2. 在 XAMPP Control Panel 點擊 Apache 的 "Config"
-# 3. 將端口改為 8080：Listen 8080
-# 4. 訪問時使用：http://localhost:8080/online-classes/backend/
-```
-
-#### 問題 2：MySQL 無法啟動
-```bash
-# 解決方案：
-# 1. 檢查 3306 端口是否被佔用
-# 2. 在服務管理員中停止其他 MySQL 服務
-# 3. 重新啟動 XAMPP MySQL
-```
-
-#### 問題 3：檔案權限錯誤
-```bash
-# 解決方案：
-# 1. 確保檔案不是唯讀狀態
-# 2. 右鍵檔案 → 內容 → 取消勾選 "唯讀"
-# 3. 確保 XAMPP 有足夠的權限
-```
-
-#### 問題 4：API 回應 500 錯誤
-```bash
-# 檢查方法：
-# 1. 檢視 Apache 錯誤日誌：C:\xampp\apache\logs\error.log
-# 2. 檢查 PHP 語法錯誤
-# 3. 確認資料庫連線參數正確
-```
-
-### 🎯 完成確認清單
-
-- [ ] XAMPP 已安裝並啟動 Apache + MySQL
-- [ ] 資料庫 `online_classes` 已建立
-- [ ] 所有資料表已建立完成
-- [ ] 後端檔案已複製到正確位置
-- [ ] 測試 API 端點正常回應
-- [ ] 無錯誤訊息出現
-
-完成以上步驟後，您的後端 API 就可以正常使用了！
-
----
+- 🎨 現代化使用者介面設計
+- 📱 完全響應式佈局，支援各種裝置
+- 🌐 多語言支援（繁中/英文/日文）
+- 🤖 AI 智能課程推薦機器人
+- ❤️ 課程收藏功能
+- 💬 課程評論系統
+- 🎪 動態輪播展示熱門課程
+- 🔐 安全的使用者認證系統
+- 📊 完整的課程管理功能
 
 ## 🛠️ 技術架構
 
+### 前端技術棧
+
+- **框架**: React.js 18
+- **路由**: React Router DOM
+- **狀態管理**: React Hooks (useState, useEffect)
+- **樣式**: CSS3 + CSS Variables
+- **國際化**: react-i18next
+- **UI 組件**: React Icons
+- **通知系統**: SweetAlert2
+- **AI 整合**: Google Gemini API
+
 ### 後端技術棧
-- **程式語言**: PHP 8.0+
-- **資料庫**: MySQL 8.0+
+
+- **語言**: PHP 8.x
+- **資料庫**: MySQL
 - **資料庫操作**: PDO (PHP Data Objects)
 - **API 格式**: RESTful JSON API
 - **跨域支援**: CORS Headers
-- **開發環境**: XAMPP/WAMP
 
-### 系統特色
-- 🔒 用戶認證系統（登入/註冊）
-- 📚 完整課程管理功能
-- 🎓 學生報名系統
-- ❤️ 課程收藏功能
-- 💬 課程評論系統
-- 👤 用戶資料管理
+### 系統架構圖
 
-## 📁 檔案結構
+```
+┌─────────────────┐    HTTP/JSON     ┌─────────────────┐
+│   Frontend      │ ───────────────► │   Backend       │
+│   (React.js)    │                  │   (PHP + MySQL) │
+├─────────────────┤                  ├─────────────────┤
+│ • 使用者介面    │                   │ • RESTful API   │
+│ • 路由管理      │                   │ • 使用者認證    │
+│ • 狀態管理      │                   │ • 資料庫操作    │
+│ • AI 聊天機器人 │                   │ • 課程管理      │
+└─────────────────┘                  └─────────────────┘
+```
+
+## 📁 專案結構
+
+### 前端結構
+
+```
+src/
+├── components/
+│   ├── Header.js           # 導航頭部組件
+│   ├── Footer.js           # 頁腳組件
+│   ├── CourseList.js       # 課程列表
+│   ├── CourseDetail.js     # 課程詳情
+│   ├── MyCourses.js        # 學生課程管理
+│   ├── TeacherCourses.js   # 教師課程管理
+│   ├── Myfavoite.js        # 收藏功能
+│   ├── ChatBot.js          # AI 聊天機器人
+│   ├── Carousel.js         # 輪播組件
+│   ├── LoginRegister.js    # 登入註冊
+│   ├── EditProfile.js      # 個人資料編輯
+│   └── CourseComments.js   # 評論系統
+├── App.js                  # 主應用程式
+├── App.css                 # 主樣式表
+├── i18n.js                 # 國際化設定
+└── index.js                # 應用程式入口點
+```
+
+### 後端結構
 
 ```
 backend/
-├── auth.php          # 用戶認證 API（登入/註冊）
+├── auth.php          # 使用者認證 API
 ├── courses.php       # 課程管理 API
 ├── enrollments.php   # 課程報名 API
 ├── favorites.php     # 收藏功能 API
 ├── comment.php       # 評論系統 API
-├── users.php         # 用戶資料管理 API
-├── db.php           # 資料庫連線設定
-└── README.md        # API 文檔
-```
-
-## 🚀 API 端點說明
-
-### 基礎設定
-- **Base URL**: `http://localhost/online-classes/backend/`
-- **Content-Type**: `application/json`
-- **支援方法**: GET, POST, OPTIONS
-- **跨域支援**: 已啟用 CORS
-
----
-
-### 🔐 用戶認證 ([`auth.php`](backend/auth.php))
-
-#### 用戶登入
-```http
-POST /auth.php?action=login
-Content-Type: application/json
-
-{
-    "email": "user@example.com",
-    "password": "password123"
-}
-```
-
-**回應**:
-```json
-{
-    "success": true,
-    "user": {
-        "id": 1,
-        "name": "張三",
-        "email": "user@example.com",
-        "gender": "male",
-        "birthday": "1990-01-01",
-        "role": "student"
-    }
-}
-```
-
-#### 用戶註冊
-```http
-POST /auth.php?action=register
-Content-Type: application/json
-
-{
-    "name": "張三",
-    "email": "user@example.com",
-    "password": "password123",
-    "role": "student",
-    "gender": "male"
-}
-```
-
----
-
-### 📚 課程管理 ([`courses.php`](backend/courses.php))
-
-#### 取得所有課程
-```http
-GET /courses.php?action=list
-```
-
-**回應**:
-```json
-[
-    {
-        "id": 1,
-        "title": "React.js 入門課程",
-        "description": "學習現代前端開發",
-        "start_time": "2024-01-15 10:00:00",
-        "end_time": "2024-01-15 12:00:00",
-        "max_capacity": 30,
-        "teacher_id": 2,
-        "enrolled_count": 15
-    }
-]
-```
-
-#### 取得特定課程
-```http
-GET /courses.php?action=get&id=1
-```
-
-#### 取得教師的課程
-```http
-GET /courses.php?action=listByTeacher&teacher_id=2
-```
-
-#### 建立新課程（教師）
-```http
-POST /courses.php?action=create
-Content-Type: application/json
-
-{
-    "title": "新課程標題",
-    "description": "課程描述",
-    "start_time": "2024-01-15 10:00:00",
-    "end_time": "2024-01-15 12:00:00",
-    "max_capacity": 30,
-    "teacher_id": 2
-}
-```
-
-#### 更新課程（教師）
-```http
-POST /courses.php?action=update
-Content-Type: application/json
-
-{
-    "course_id": 1,
-    "title": "更新的課程標題",
-    "description": "更新的課程描述",
-    "max_capacity": 35,
-    "start_time": "2024-01-15 10:00:00",
-    "end_time": "2024-01-15 12:00:00"
-}
-```
-
-#### 刪除課程（教師）
-```http
-POST /courses.php?action=delete
-Content-Type: application/json
-
-{
-    "course_id": 1
-}
-```
-
-#### 取得課程報名學生
-```http
-GET /courses.php?action=enrolled_students&course_id=1
-```
-
----
-
-### 🎓 課程報名 ([`enrollments.php`](backend/enrollments.php))
-
-#### 報名課程
-```http
-POST /enrollments.php?action=add
-Content-Type: application/json
-
-{
-    "student_id": 1,
-    "course_id": 1
-}
-```
-
-#### 取得學生已報名課程
-```http
-GET /enrollments.php?action=list&student_id=1
-```
-
-#### 取消課程報名
-```http
-POST /enrollments.php?action=delete
-Content-Type: application/json
-
-{
-    "student_id": 1,
-    "course_id": 1
-}
-```
-
----
-
-### ❤️ 收藏功能 ([`favorites.php`](backend/favorites.php))
-
-#### 收藏課程
-```http
-POST /favorites.php?action=add
-Content-Type: application/json
-
-{
-    "student_id": 1,
-    "course_id": 1
-}
-```
-
-#### 移除收藏
-```http
-POST /favorites.php?action=remove
-Content-Type: application/json
-
-{
-    "student_id": 1,
-    "course_id": 1
-}
-```
-
-#### 取得學生收藏課程
-```http
-GET /favorites.php?action=listByStudent&id=1
-```
-
----
-
-### 💬 評論系統 ([`comment.php`](backend/comment.php))
-
-#### 新增評論
-```http
-POST /comment.php?action=add
-Content-Type: application/json
-
-{
-    "user_id": 1,
-    "course_id": 1,
-    "content": "這個課程很棒！"
-}
-```
-
-#### 取得課程評論
-```http
-GET /comment.php?action=list&course_id=1
-```
-
-**回應**:
-```json
-[
-    {
-        "id": 1,
-        "content": "這個課程很棒！",
-        "created_at": "2024-01-15 14:30:00",
-        "user_name": "張三"
-    }
-]
-```
-
-#### 刪除評論
-```http
-POST /comment.php?action=delete&id=1
-```
-
----
-
-### 👤 用戶管理 ([`users.php`](backend/users.php))
-
-#### 更新用戶資料
-```http
-POST /users.php?action=update
-Content-Type: application/json
-
-{
-    "id": 1,
-    "name": "新姓名",
-    "gender": "male",
-    "birthday": "1990-01-01",
-    "password": "新密碼"  // 選填
-}
+├── users.php         # 使用者管理 API
+└── db.php           # 資料庫連線設定
 ```
 
 ## 🗄️ 資料庫設計
 
-### 核心資料表
+### 資料表結構
 
-#### `users` - 用戶表
-| 欄位 | 類型 | 說明 |
-|------|------|------|
-| id | INT | 主鍵，自動遞增 |
-| name | VARCHAR(100) | 用戶姓名 |
-| email | VARCHAR(150) | 電子郵件（唯一） |
-| password | VARCHAR(255) | 密碼 |
-| role | ENUM | 角色（student/teacher） |
-| gender | ENUM | 性別（male/female） |
-| birthday | DATE | 生日 |
-| created_at | TIMESTAMP | 建立時間 |
+#### `users` - 使用者表
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('student', 'teacher') NOT NULL,
+    gender ENUM('male', 'female') NOT NULL,
+    birthday DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
 #### `courses` - 課程表
-| 欄位 | 類型 | 說明 |
-|------|------|------|
-| id | INT | 主鍵，自動遞增 |
-| title | VARCHAR(200) | 課程標題 |
-| description | TEXT | 課程描述 |
-| start_time | DATETIME | 開始時間 |
-| end_time | DATETIME | 結束時間 |
-| max_capacity | INT | 最大人數 |
-| teacher_id | INT | 教師 ID（外鍵） |
-| created_at | TIMESTAMP | 建立時間 |
+```sql
+CREATE TABLE courses (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    max_capacity INT NOT NULL,
+    teacher_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES users(id)
+);
+```
 
-#### `enrollments` - 報名表
-| 欄位 | 類型 | 說明 |
-|------|------|------|
-| id | INT | 主鍵，自動遞增 |
-| student_id | INT | 學生 ID（外鍵） |
-| course_id | INT | 課程 ID（外鍵） |
-| enrolled_at | TIMESTAMP | 報名時間 |
+#### `enrollments` - 課程報名表
+```sql
+CREATE TABLE enrollments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    student_id INT NOT NULL,
+    course_id INT NOT NULL,
+    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES users(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    UNIQUE KEY unique_enrollment (student_id, course_id)
+);
+```
 
 #### `favorites` - 收藏表
-| 欄位 | 類型 | 說明 |
+```sql
+CREATE TABLE favorites (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    student_id INT NOT NULL,
+    course_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES users(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    UNIQUE KEY unique_favorite (student_id, course_id)
+);
+```
+
+#### `course_comments` - 課程評論表
+```sql
+CREATE TABLE course_comments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    course_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+```
+
+## 🚀 API 端點說明
+
+### 認證相關 (`auth.php`)
+
+| 方法 | 端點 | 描述 |
 |------|------|------|
-| id | INT | 主鍵，自動遞增 |
-| student_id | INT | 學生 ID（外鍵） |
-| course_id | INT | 課程 ID（外鍵） |
-| created_at | TIMESTAMP | 收藏時間 |
+| POST | `/auth.php?action=login` | 使用者登入 |
+| POST | `/auth.php?action=register` | 使用者註冊 |
 
-#### `course_comments` - 評論表
-| 欄位 | 類型 | 說明 |
+### 課程管理 (`courses.php`)
+
+| 方法 | 端點 | 描述 |
 |------|------|------|
-| id | INT | 主鍵，自動遞增 |
-| user_id | INT | 用戶 ID（外鍵） |
-| course_id | INT | 課程 ID（外鍵） |
-| content | TEXT | 評論內容 |
-| created_at | TIMESTAMP | 評論時間 |
+| GET | `/courses.php?action=list` | 取得所有課程列表 |
+| GET | `/courses.php?action=get&id={id}` | 取得特定課程詳情 |
+| GET | `/courses.php?action=listByTeacher&teacher_id={id}` | 取得教師的課程 |
+| GET | `/courses.php?action=enrolled_students&course_id={id}` | 取得課程報名學生 |
+| POST | `/courses.php?action=create` | 建立新課程 |
+| POST | `/courses.php?action=update` | 更新課程資訊 |
+| POST | `/courses.php?action=delete` | 刪除課程 |
 
-## 🛡️ 安全性說明
+### 課程報名 (`enrollments.php`)
 
-### ⚠️ 重要安全提醒
+| 方法 | 端點 | 描述 |
+|------|------|------|
+| POST | `/enrollments.php?action=add` | 報名課程 |
+| GET | `/enrollments.php?action=list&student_id={id}` | 取得學生已報名課程 |
+| POST | `/enrollments.php?action=delete` | 取消課程報名 |
 
-**當前代碼存在安全風險，僅適用於開發環境**
+### 收藏功能 (`favorites.php`)
+
+| 方法 | 端點 | 描述 |
+|------|------|------|
+| POST | `/favorites.php?action=add` | 收藏課程 |
+| POST | `/favorites.php?action=remove` | 移除收藏 |
+| GET | `/favorites.php?action=listByStudent&id={id}` | 取得學生收藏課程 |
+
+### 評論系統 (`comment.php`)
+
+| 方法 | 端點 | 描述 |
+|------|------|------|
+| POST | `/comment.php?action=add` | 新增評論 |
+| GET | `/comment.php?action=list&course_id={id}` | 取得課程評論 |
+| POST | `/comment.php?action=delete&id={id}` | 刪除評論 |
+
+### 使用者管理 (`users.php`)
+
+| 方法 | 端點 | 描述 |
+|------|------|------|
+| POST | `/users.php?action=update` | 更新使用者資料 |
+
+## 🎯 系統功能介紹
+
+### 1. 使用者管理系統
+
+#### 🔐 註冊登入功能
+- 支援學生和教師角色註冊
+- Email 帳號驗證機制
+- 安全的使用者認證系統
+
+#### 👤 個人資料管理
+- 編輯個人基本資料（姓名、性別、生日）
+- 修改密碼功能
+- 角色權限管理
+
+### 2. 課程管理系統
+
+#### 👨‍🎓 學生功能
+
+**課程瀏覽** (`CourseList.js`)
+- 瀏覽所有可用課程
+- 課程搜尋與篩選
+- 查看課程詳細資訊
+- 課程報名功能
+
+**我的課程** (`MyCourses.js`)
+- 查看已報名課程列表
+- 課程學習進度追蹤
+- 快速進入課程詳情
+
+**收藏功能** (`Myfavoite.js`)
+- 收藏喜愛的課程
+- 管理收藏課程列表
+- 一鍵移除收藏
+
+#### 👨‍🏫 教師功能
+
+**課程創建與管理** (`TeacherCourses.js`)
+- 新增課程資訊
+- 編輯課程內容
+- 刪除課程
+- 查看課程報名狀況
+- 管理課程報名學生名單
+
+### 3. 課程詳情系統 (`CourseDetail.js`)
+
+- **詳細課程資訊顯示**
+  - 課程時間安排
+  - 報名人數統計
+  - 課程描述與大綱
+  
+- **互動功能**
+  - 課程報名/退選
+  - 課程評論系統
+  - 社群互動
+
+### 4. 評論系統 (`CourseComments.js`)
+
+- 學生課程評論功能
+- 評論時間戳記
+- 即時評論更新
+- 評論內容管理
+
+### 5. 智能聊天機器人 (`ChatBot.js`)
+
+- **AI 課程推薦**
+  - 基於 Google Gemini API
+  - 智能課程匹配
+  - 個人化推薦系統
+  
+- **常見問題解答**
+  - 平台使用指南
+  - 課程相關諮詢
+  - 即時客服支援
+
+### 6. 動態輪播系統 (`Carousel.js`)
+
+- 熱門課程展示
+- 自動輪播功能
+- 觸控手勢支援
+- 鍵盤導航控制
+
+### 7. 多語言系統 (`i18n.js`)
+
+- 繁體中文、英文、日文支援
+- 動態語言切換
+- 完整介面翻譯
+
+## ⚙️ 環境設置
+
+### 系統需求
+
+#### 前端需求
+- Node.js 16.0 或更高版本
+- npm 8.0 或更高版本
+- 現代瀏覽器 (Chrome, Firefox, Safari, Edge)
+
+#### 後端需求
+- PHP 8.0 或更高版本
+- MySQL 8.0 或更高版本
+- Apache/Nginx 網頁伺服器
+- XAMPP/WAMP (開發環境)
+
+### 🚀 安裝步驟
+
+#### 1. 下載專案
+
+```bash
+git clone <repository-url>
+cd online-classes
+```
+
+#### 2. 後端設置
+
+**資料庫設置**
+1. 啟動 MySQL 服務
+2. 建立資料庫 `online_classes`
+3. 匯入資料表結構（參考上方資料庫設計）
+
+**設定資料庫連線**
+編輯 `backend/db.php`：
+```php
+$host = 'localhost';
+$db   = 'online_classes';
+$user = 'your_username';
+$pass = 'your_password';
+$charset = 'utf8mb4';
+```
+
+**部署後端 API**
+將 `backend/` 資料夾放置到網頁伺服器目錄（如 `htdocs/Online-Classes/back/`）
+
+#### 3. 前端設置
+
+**安裝依賴套件**
+```bash
+npm install
+```
+
+**環境變數設定**
+建立 `.env` 檔案：
+```env
+REACT_APP_API_URL=http://localhost:8080/Online-Classes/back
+REACT_APP_GEMINI_API_KEY=your_gemini_api_key
+```
+
+**啟動開發伺服器**
+```bash
+npm start
+```
+
+應用程式將在 [http://localhost:3000](http://localhost:3000) 上運行
+
+### 📝 可用腳本
+
+#### `npm start`
+在開發模式下運行應用程式，支援熱重載功能
+
+#### `npm test`
+啟動測試運行器，執行單元測試
+
+#### `npm run build`
+建構生產版本應用程式，輸出到 `build/` 資料夾
+
+#### `npm run eject`
+⚠️ **單向操作**：移除 Create React App 的建構配置抽象
+
+## 🔧 開發工具建議
+
+### IDE 推薦
+- **Visual Studio Code**
+
+### 推薦擴充套件
+- ES7+ React/Redux/React-Native snippets
+- Prettier - Code formatter
+- Auto Rename Tag
+- Bracket Pair Colorizer
+- PHP Intelephense (後端開發)
+
+### 瀏覽器支援
+- Chrome (最新版本)
+- Firefox (最新版本)
+- Safari (最新版本)
+- Edge (最新版本)
+
+## 🚨 重要安全提醒
+
+⚠️ **當前代碼存在安全風險，僅適用於開發環境**
 
 ### 已知安全問題
 1. **密碼明文儲存** - 生產環境需要密碼雜湊
@@ -642,107 +415,36 @@ $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 if (password_verify($password, $user['password'])) {
     // 登入成功
 }
-
-// 輸入驗證範例
-$email = filter_var($email, FILTER_VALIDATE_EMAIL);
-if (!$email) {
-    throw new InvalidArgumentException('無效的電子郵件格式');
-}
 ```
 
 ## 🐛 疑難排解
 
 ### 常見問題
 
-#### 1. 資料庫連線失敗
-- 檢查 MySQL 服務是否啟動
-- 確認 [`db.php`](backend/db.php) 中的連線參數
-- 檢查資料庫是否存在
+#### 1. 無法連接到後端 API
+- 檢查 `.env` 中的 `REACT_APP_API_URL` 設定
+- 確認後端伺服器正常運行
+- 檢查 CORS 設定
 
-#### 2. CORS 錯誤
-- 確認 HTTP 標頭設定正確
-- 檢查前端請求的網域是否被允許
+#### 2. 資料庫連線失敗
+- 確認 MySQL 服務已啟動
+- 檢查 `db.php` 中的連線參數
+- 確認資料庫和資料表已建立
 
-#### 3. API 無回應
-- 檢查 PHP 錯誤日誌
-- 確認檔案路徑和權限
-- 檢查 Apache/Nginx 設定
+#### 3. 前端建構失敗
+參考 [Create React App 疑難排解](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
 
-#### 4. JSON 解析錯誤
-- 確認請求的 Content-Type 為 `application/json`
-- 檢查 JSON 格式是否正確
+#### 4. AI 聊天機器人無法使用
+- 檢查 Gemini API 金鑰是否正確設定
+- 確認網路連線正常
+- 檢查 API 配額是否超出限制
 
-### 除錯技巧
-```php
-// 開啟錯誤顯示（僅開發環境）
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+## 📚 學習資源
 
-// 日誌記錄
-error_log("API Debug: " . json_encode($data));
-```
-
-## 📊 效能優化建議
-
-### 資料庫優化
-```sql
--- 建立索引提升查詢效能
-CREATE INDEX idx_course_teacher ON courses(teacher_id);
-CREATE INDEX idx_enrollment_student ON enrollments(student_id);
-CREATE INDEX idx_enrollment_course ON enrollments(course_id);
-CREATE INDEX idx_favorites_student ON favorites(student_id);
-CREATE INDEX idx_comments_course ON course_comments(course_id);
-```
-
-### API 快取
-```php
-// HTTP 快取標頭
-header('Cache-Control: public, max-age=300'); // 5分鐘快取
-header('ETag: "' . md5($data) . '"');
-```
-
-## 📝 開發規範
-
-### 程式碼風格
-- 使用 PSR-4 自動載入標準
-- 遵循 PSR-12 程式碼風格指南
-- 使用有意義的變數和函數命名
-
-### 錯誤處理
-```php
-try {
-    // 資料庫操作
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-} catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['error' => '伺服器內部錯誤']);
-    exit;
-}
-```
-
-## 🔄 版本控制
-
-### API 版本化建議
-```
-backend/
-├── v1/
-│   ├── auth.php
-│   ├── courses.php
-│   └── ...
-└── v2/
-    ├── auth.php
-    ├── courses.php
-    └── ...
-```
-
-## 📚 相關資源
-
+- [React 官方文檔](https://reactjs.org/)
+- [Create React App 文檔](https://facebook.github.io/create-react-app/docs/getting-started)
 - [PHP 官方文檔](https://www.php.net/docs.php)
 - [MySQL 官方文檔](https://dev.mysql.com/doc/)
-- [PDO 教學](https://www.php.net/manual/en/book.pdo.php)
-- [RESTful API 設計指南](https://restfulapi.net/)
 
 ## 🤝 貢獻指南
 
@@ -756,6 +458,15 @@ backend/
 
 本專案由 Wei-chun Chen 設計開發，僅供學習使用。
 
+Copyright © 線上課程平台 All Rights Reserved.
+
 ---
 
-**感謝您使用 Online Classes 線上課程學習平台後端系統！** 🚀
+## 🙋‍♂️ 聯絡資訊
+
+如有任何問題或建議，歡迎聯絡：
+
+- 作者：Wei-chun Chen
+- 專案用途：學習與教育
+
+**感謝您使用 Online Classes 線上課程學習平台！** 🎓
